@@ -1,0 +1,90 @@
+# ==============================================================================
+# Git Ignore Configuration for Graph-PAVNet
+# ==============================================================================
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Environments & Virtual Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Jupyter Notebook & Checkpoints
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/*
+
+# IDE & Editor Settings
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-project
+*.sublime-workspace
+
+# OS-Specific
+Thumbs.db
+Desktop.ini
+.DS_Store
+ehthumbs.db
+
+# ==============================================================================
+# Medical Datasets & Volumetric Scans (Never commit multi-GB medical scans)
+# ==============================================================================
+dataset/
+data/
+*.nii
+*.nii.gz
+
+# ==============================================================================
+# Volumetric Predictions & Test Output Artefacts
+# Keep prediction directory tracked via .gitkeep, but exclude generated 3D NIfTI files
+# ==============================================================================
+predictions/*.nii.gz
+predictions/*.nii
+
+# ==============================================================================
+# Model Checkpoints (Keep production models, ignore intermediate experimental runs)
+# ==============================================================================
+# Ignore intermediate experimental checkpoints:
+models/best_pavnet.pth
+models/best_pavnet-2.pth
+models/best_pavnet_final.pth
+models/best_pavnet_final-2.pth
+models/best_pavnet_final-3.pth
+# Any temporary checkpoint saves:
+*.checkpoint.pth
+*.ckpt
+
+# ==============================================================================
+# Legacy / External Clones (Modularized cleanly inside src/)
+# ==============================================================================
+GraphPAVNet-github-main/
+
+# ==============================================================================
+# Copyrighted Publisher PDF Preprints (Referenced via DOIs in README & docs)
+# ==============================================================================
+docs/papers/*.pdf
+
+# ==============================================================================
+# Scratch, Logs & Temporary Files
+# ==============================================================================
+scratch/
+*.log
+*.tmp
+temp/
+tmp/
+.tempmediaStorage/
+.system_generated/

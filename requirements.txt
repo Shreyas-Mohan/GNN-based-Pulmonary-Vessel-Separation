@@ -1,0 +1,14 @@
+# Deep Learning & Graph Neural Networks
+torch>=2.0.0
+torchvision
+torch-geometric>=2.3.0
+
+# Medical Imaging & Spatial Processing
+SimpleITK>=2.2.0
+scipy>=1.10.0
+
+# Data Science & Machine Learning
+numpy>=1.23.0
+scikit-learn>=1.2.0
+tqdm>=4.64.0
+matplotlib>=3.7.0
