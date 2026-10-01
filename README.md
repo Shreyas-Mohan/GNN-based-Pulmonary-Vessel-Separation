@@ -178,7 +178,7 @@ $$
 Layer-conditioned self-attention calculates dynamic attention coefficients between connected nodes:
 
 $$
-\alpha_{uv} = \frac{\exp\left(\operatorname{LeakyReLU}\left(\mathbf{a}^\top [\mathbf{W}\mathbf{x}_u \parallel \mathbf{W}\mathbf{x}_v]\right)\right)}{\sum_{k \in \mathcal{N}_u} \exp\left(\operatorname{LeakyReLU}\left(\mathbf{a}^\top [\mathbf{W}\mathbf{x}_u \parallel \mathbf{W}\mathbf{x}_k]\right)\right)}
+\alpha_{uv} = \frac{\exp\left(\mathrm{LeakyReLU}\left(\mathbf{a}^\top [\mathbf{W}\mathbf{x}_u \parallel \mathbf{W}\mathbf{x}_v]\right)\right)}{\sum_{k \in \mathcal{N}_u} \exp\left(\mathrm{LeakyReLU}\left(\mathbf{a}^\top [\mathbf{W}\mathbf{x}_u \parallel \mathbf{W}\mathbf{x}_k]\right)\right)}
 $$
 
 Features are aggregated across multiple attention heads and modulated by layer-level routing weights.
@@ -187,7 +187,7 @@ Features are aggregated across multiple attention heads and modulated by layer-l
 To combat class imbalance and the numerical dominance of large trunks, each node loss is scaled inversely by its physical radius:
 
 $$
-w_i = \frac{1}{\sqrt{\operatorname{clamp}(r_i, 0.5, 5.0)}}
+w_i = \frac{1}{\sqrt{\mathrm{clamp}(r_i, 0.5, 5.0)}}
 $$
 
 $$
