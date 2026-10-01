@@ -98,15 +98,21 @@ Our research progressed through five major iterations, systematically solving da
 
 ### Trial 5: Radius-Weighted Focal Loss & Topological Diffusion
 To resolve the error modes discovered in Trial 4, we implemented two synergistic tracks:
+
 - **Track 1 (Post-Processing): Confidence-Guided Edge-Affinity Diffusion**:
   - High-confidence nodes ($P \ge 0.70$ or $P \le 0.30$) act as immovable topological anchors.
   - Probability consensus diffuses across graph edges with edge-affinity weights $W_{uv} = \exp\left(-\frac{(P_u - P_v)^2}{\sigma^2}\right)$, aggressively downweighting cross-vessel shortcut edges.
   - Slashes BMC fractures immediately by **28.3 fractures/case** (588.8 $\to$ 560.5 on Trial 4, and 593.0 $\to$ 564.6 on Trial 5).
+
 - **Track 2 (Training): Radius-Weighted Focal Loss + Differentiable Edge Regularization**:
-  - Multi-objective training loss prioritizing small peripheral calibers:
-    $$\mathcal{L} = \mathcal{L}_{\text{Focal-Radius}} + \lambda_{\text{topo}}\mathcal{L}_{\text{topo}} + \lambda_{\text{seed}}\mathcal{L}_{\text{seed}}$$
-  - Penalizes node probability divergence $(P_u - P_v)^2$ directly during backpropagation ($\lambda_{\text{topo}} = 0.15$), and weights small branches inversely by radius $w(r) \propto 1/\sqrt{r}$.
-  - **Result**: Boosted small peripheral artery recall to **75.76%** (vs 70.90% in Trial 4), and provided an optimal balanced operating point ($T=0.43$) yielding **72.48% Vein Recall** and **69.75% Small Vein Recall** for clinical COPD phenotyping.
+  Multi-objective training loss prioritizing small peripheral calibers:
+
+$$
+\mathcal{L} = \mathcal{L}_{\text{Focal-Radius}} + \lambda_{\text{topo}}\mathcal{L}_{\text{topo}} + \lambda_{\text{seed}}\mathcal{L}_{\text{seed}}
+$$
+
+  where node probability divergence $(P_u - P_v)^2$ is penalized directly during backpropagation ($\lambda_{\text{topo}} = 0.15$), and small branches are weighted inversely by radius $w(r) \propto 1/\sqrt{r}$.
+  - **Result**: Boosted small peripheral artery recall to **75.76%** (vs 70.90% in Trial 4), and provided an optimal balanced operating point ($T=0.43$) yielding **72.48% Vein Recall** and **69.75% Small Vein Recall** for clinical vascular analysis.
 
 ---
 
@@ -155,38 +161,57 @@ To resolve the error modes discovered in Trial 4, we implemented two synergistic
                             │
                             ▼
           Sparse-to-Dense KDTree 3D Reconstruction
-               & Clinical Biomarkers (COPD)
+                    & Clinical Biomarkers
 ```
 
 ### 1. Light Vessel Structured Modeling (LVSM)
 - **Graph Construction**: Constructs an undirected graph $G = (V, E)$ using $k=3$ spatial nearest neighbors.
 - **Hilum Seed Selection**: Automatically identifies the 10 largest-caliber trunk nodes near the pulmonary hilum using a caliber-distance objective:
-  $$S_i = r_i - 0.1 \cdot \|\mathbf{x}_i - \mathbf{x}_{\text{center}}\|_2$$
+
+$$
+S_i = r_i - 0.1 \cdot \Vert \mathbf{x}_i - \mathbf{x}_{\text{center}} \Vert_2
+$$
+
 - **Layer-Wise BFS Propagation**: Propagates hierarchical layers outward from hilum seeds up to $K=3$ hops, generating structural hierarchy masks $\mathbf{H}_i \in \{0, 1\}^4$.
 
 ### 2. Multi-Head Hierarchical Attention (HGAT)
-- Layer-conditioned self-attention calculates dynamic attention coefficients between connected nodes:
-  $$\alpha_{uv} = \frac{\exp\left(\text{LeakyReLU}\left(\mathbf{a}^\top [\mathbf{W}\mathbf{x}_u \,\|\, \mathbf{W}\mathbf{x}_v]\right)\right)}{\sum_{k \in \mathcal{N}_u} \exp\left(\text{LeakyReLU}\left(\mathbf{a}^\top [\mathbf{W}\mathbf{x}_u \,\|\, \mathbf{W}\mathbf{x}_k]\right)\right)}$$
-- Features are aggregated across multiple attention heads and modulated by layer-level routing weights.
+Layer-conditioned self-attention calculates dynamic attention coefficients between connected nodes:
+
+$$
+\alpha_{uv} = \frac{\exp\left(\operatorname{LeakyReLU}\left(\mathbf{a}^\top [\mathbf{W}\mathbf{x}_u \parallel \mathbf{W}\mathbf{x}_v]\right)\right)}{\sum_{k \in \mathcal{N}_u} \exp\left(\operatorname{LeakyReLU}\left(\mathbf{a}^\top [\mathbf{W}\mathbf{x}_u \parallel \mathbf{W}\mathbf{x}_k]\right)\right)}
+$$
+
+Features are aggregated across multiple attention heads and modulated by layer-level routing weights.
 
 ### 3. Radius-Weighted Focal Loss
 To combat class imbalance and the numerical dominance of large trunks, each node loss is scaled inversely by its physical radius:
-$$w_i = \frac{1}{\sqrt{\text{clamp}(r_i, 0.5, 5.0)}}$$
-$$\mathcal{L}_{\text{Focal-Radius}} = -\frac{1}{N}\sum_{i=1}^N \alpha_{y_i} w_i (1 - P_{i, y_i})^\gamma \log(P_{i, y_i})$$
+
+$$
+w_i = \frac{1}{\sqrt{\operatorname{clamp}(r_i, 0.5, 5.0)}}
+$$
+
+$$
+\mathcal{L}_{\text{Focal-Radius}} = -\frac{1}{N}\sum_{i=1}^N \alpha_{y_i} w_i (1 - P_{i, y_i})^\gamma \log(P_{i, y_i})
+$$
+
 where $\gamma = 2.0$ dynamically focuses attention on hard-to-classify peripheral capillaries.
 
 ### 4. Differentiable Edge-Consistency Regularization
 Topological fractures are penalized directly during backpropagation:
-$$\mathcal{L}_{\text{topo}} = \frac{1}{|E|} \sum_{(u, v) \in E} (P_u - P_v)^2$$
+
+$$
+\mathcal{L}_{\text{topo}} = \frac{1}{|E|} \sum_{(u, v) \in E} (P_u - P_v)^2
+$$
+
 This guides the HGAT parameters to enforce smooth label transitions along anatomical branches.
 
 ---
 
 ## 📊 Empirical Benchmark & Ablation Study
 
-Evaluated across **all 30 unseen test CT scans** (15 patients $\times$ 2 breathing phases = **245,760 total graph nodes**) from the Lung250M-4B test split:
+Evaluated across **all 30 unseen test CT scans** (15 patients × 2 breathing phases = **245,760 total graph nodes**) from the Lung250M-4B test split:
 
-| Configuration | Overall Acc (%) | Macro S-Dice | Macro mIoU (%) | Mean BMC (Fractures) | Vein Recall (%) | Artery Recall (%) | Small Vessel Acc ($r \le 1.5$) | Small Artery Rec ($BV_5$) | Small Vein Rec ($BV_5$) |
+| Configuration | Overall Acc (%) | Macro S-Dice | Macro mIoU (%) | Mean BMC (Fractures) | Vein Recall (%) | Artery Recall (%) | Small Vessel Acc (r <= 1.5) | Small Artery Rec (BV5) | Small Vein Rec (BV5) |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | **Trial 4 Baseline ($T=0.45$)** | 70.23 | 0.7017 | 54.06 | 588.8 | 68.85 | 71.49 | 68.63 | 70.90 | 66.00 |
 | **Trial 4 + Track 1 Diffusion** | **70.62** | **0.7043** | **54.42** | **560.5** | 68.92 | 72.15 | **68.98** | 71.30 | 66.25 |
@@ -197,7 +222,7 @@ Evaluated across **all 30 unseen test CT scans** (15 patients $\times$ 2 breathi
 ### Key Empirical Observations
 1. **Topological Healing**: Track 1 Confidence Diffusion consistently eliminated **28.3 to 28.4 fractures per scan** across all models without degrading boundary delineation.
 2. **Small Vessel Calibration**: Trial 5 successfully lifted small artery recall to **75.76%** (vs 70.90% baseline).
-3. **Threshold Flexibility for Clinical Phenotyping**: Operating at $T=0.43$ yields balanced sensitivity (**72.48% Vein Recall** and **69.75% Small Vein Recall**), preventing false vascular pruning artifacts in downstream COPD analysis.
+3. **Threshold Flexibility for Clinical Phenotyping**: Operating at $T=0.43$ yields balanced sensitivity (**72.48% Vein Recall** and **69.75% Small Vein Recall**), preventing false vascular pruning artifacts in downstream clinical analysis.
 
 ---
 
@@ -207,11 +232,11 @@ Our pipeline automatically computes standardized clinical imaging biomarkers dir
 
 | Biomarker | Description | Clinical Significance |
 | :--- | :--- | :--- |
-| **Total Lung Volume (mL)** | Sum of parenchymal volume within lung boundary | Evaluates hyperinflation in COPD and restrictive defects. |
+| **Total Lung Volume (mL)** | Sum of parenchymal volume within lung boundary | Evaluates hyperinflation and restrictive parenchymal defects. |
 | **Total Vessel Volume (mL)** | Total vascular blood volume across both lungs | Assesses global pulmonary vascular capacity. |
-| **Emphysema Index (LAA-950 %)** | Percentage of lung parenchyma voxels $<-950\text{ HU}$ | Primary radiological metric for emphysematous tissue destruction. |
-| **Artery-to-Vein Ratio (AVR)** | Ratio of arterial volume to venous volume ($\text{Vol}_{\text{art}} / \text{Vol}_{\text{vein}}$) | Biomarker for pulmonary hypertension, vascular shunting, and inflammation. |
-| **Small Vessel Caliber (BV5 %)** | Blood volume of vessels with radius $< 1.26\text{ mm}$ ($BV_5 / \text{Total Vessel Volume} \times 100\%$) | Gold-standard biomarker for peripheral vascular pruning in COPD and smoker cohorts. |
+| **Emphysema Index (LAA-950 %)** | Percentage of lung parenchyma voxels with attenuation < -950 HU | Primary radiological metric for emphysematous tissue destruction. |
+| **Artery-to-Vein Ratio (AVR)** | Volumetric ratio of arterial to venous blood (Arterial Vol / Venous Vol) | Biomarker for vascular remodeling, shunting, and inflammation. |
+| **Small Vessel Caliber (BV5 %)** | Blood volume of small peripheral vessels with radius < 1.26 mm (BV5 Vol / Total Vessel Vol × 100%) | Gold-standard biomarker for peripheral microvascular pruning and vessel loss. |
 
 ---
 
@@ -257,7 +282,7 @@ Lung 250M-4B/
 │   └── evaluation/                       # Evaluation & biomarker calculation
 │       ├── __init__.py
 │       ├── metrics.py                    # Macro S-Dice, PPV, Recall, BMC fractures
-│       └── biomarkers.py                 # COPD metrics: AVR, BV5, LAA-950, Volumetry
+│       └── biomarkers.py                 # Clinical metrics: AVR, BV5, LAA-950, Volumetry
 │
 ├── scripts/                              # Standalone CLI execution pipelines
 │   ├── extract_features.py               # Step 1: Feature extraction (train & test)
@@ -413,3 +438,6 @@ If you use this repository, model architectures, or methodology in your academic
 
 ## 📄 License
 This project is licensed under the [MIT License](LICENSE) - see the LICENSE file for details.
+
+## 🤝 Acknowledgments
+We express our gratitude to the **Institute of Medical Informatics at the University of Lübeck** for providing the Lung250M-4B dataset, the **Key Research Laboratory of Intelligent Computing of Medical Images at Northeastern University** for the HGAT architectural formulation, and the **COPDGene Consortium** for pioneering clinical pulmonary imaging benchmarks.
